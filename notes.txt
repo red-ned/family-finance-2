@@ -1,0 +1,39 @@
+################################################################################
+# Installed programs
+apt install git
+apt install python3.10
+apt install python3-pip
+apt install python3.10-venv
+
+
+################################################################################
+Virtual Environment
+https://www.dataquest.io/blog/a-complete-guide-to-python-virtual-environments/
+
+# Make the environment
+    python3 -m venv ff2-venv
+
+# Activate
+    source ff2-venv/bin/activate
+
+# Update pip
+    ff2-venv/bin/python3.10 -m pip install --upgrade pip
+
+# Install other python libraries
+    python3 -m pip install pandas==1.1.1
+
+# Make pip requirements file
+    pip freeze > requirements.txt
+
+# Install libraries from requirements file
+    pip install -r requirements.txt
+
+# Duplicate an environment
+    python3 -m venv ff2-venv
+    source ff2-venv/bin/activate
+    pip install -r requirements.txt
+
+# Deactivate the venv
+    deactivate
+
+################################################################################
