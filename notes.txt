@@ -39,6 +39,12 @@ https://www.dataquest.io/blog/a-complete-guide-to-python-virtual-environments/
 
 ################################################################################
 # Tutorials
-    https://dash.plotly.com/installation
-    https://dash.plotly.com/layout
+    https://dash.plotly.com/introduction
+    https://dash.plotly.com/dash-core-components
+    https://dash.plotly.com/dash-html-components
+    https://dash.plotly.com/datatable
 
+
+################################################################################
+# Misc
+    Shebang #!/usr/bin/env python
