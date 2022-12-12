@@ -7,6 +7,11 @@ apt install python3.10-venv
 
 
 ################################################################################
+# Optional programs
+apt install sqlite3
+
+
+################################################################################
 # Virtual Environment
 https://www.dataquest.io/blog/a-complete-guide-to-python-virtual-environments/
 
@@ -43,6 +48,9 @@ https://www.dataquest.io/blog/a-complete-guide-to-python-virtual-environments/
     https://dash.plotly.com/dash-core-components
     https://dash.plotly.com/dash-html-components
     https://dash.plotly.com/datatable
+
+    https://realpython.com/pandas-dataframe/#further-reading
+    https://realpython.com/python-sqlite-sqlalchemy/
 
 
 ################################################################################
