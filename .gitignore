@@ -1,5 +1,6 @@
 # Ignore these specific folders
 /ff2-venv
+/data
 
 # Ignore any file that end with
 *.py[cod]
