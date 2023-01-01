@@ -49,8 +49,12 @@ https://www.dataquest.io/blog/a-complete-guide-to-python-virtual-environments/
     https://dash.plotly.com/dash-html-components
     https://dash.plotly.com/datatable
 
-    https://realpython.com/pandas-dataframe/#further-reading
+    https://realpython.com/pandas-dataframe/
     https://realpython.com/python-sqlite-sqlalchemy/
+
+    https://www.sqlite.org/docs.html
+    https://docs.python.org/3/library/sqlite3.html
+    https://pandas.pydata.org/docs/reference/index.html
 
 
 ################################################################################
