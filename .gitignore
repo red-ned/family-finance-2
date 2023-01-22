@@ -1,6 +1,7 @@
 # Ignore these specific folders
 /ff2-venv
 /data
+/.vscode/settings.json
 
 # Ignore all files in any folder with the name
 __pycache__/
