@@ -7,7 +7,8 @@ from dash import page_container
 from dash import page_registry
 
 
-app = Dash(__name__, use_pages=True, pages_folder="pages")
+app = Dash(__name__, use_pages=True, pages_folder="pages",
+        suppress_callback_exceptions=True)
 
 def _make_links_segment():
     links = list()

@@ -2,7 +2,6 @@
 
 from  xml.etree import ElementTree
 
-import pdb
 import sqlite3
 from datetime import datetime
 
@@ -25,8 +24,17 @@ CREATE TABLE line_type(
 INSERT INTO line_type VALUES (0, "NONE");
 INSERT INTO line_type VALUES (1, "Deposit");
 INSERT INTO line_type VALUES (2, "Purchase");
-INSERT INTO line_type VALUES (4, "Transfer");
-INSERT INTO line_type VALUES (8, "Refund");
+INSERT INTO line_type VALUES (3, "Transfer"); -- Old value 4
+INSERT INTO line_type VALUES (4, "Refund");   -- Old value 8
+INSERT INTO line_type VALUES (5, "Deposit Refund");
+
+CREATE TABLE line_complete(
+    id                  INTEGER PRIMARY KEY,
+    name                TEXT
+    );
+INSERT INTO line_complete VALUES (0, "NONE");
+INSERT INTO line_complete VALUES (1, "Cleared");
+INSERT INTO line_complete VALUES (2, "Reconciled");
 
 CREATE TABLE account(
     id                  INTEGER PRIMARY KEY,
@@ -34,31 +42,29 @@ CREATE TABLE account(
     account_type_id     INTEGER,
     closed              INTEGER,
     cd                  INTEGER,
-    envelopes           INTEGER,
-    FOREIGN KEY(account_type_id) REFERENCES account_type(id)
+    envelopes           INTEGER
     );
+INSERT INTO account VALUES (0, "NONE", 0, 0, 0, 0);
 
 CREATE TABLE envelope(
     id                  INTEGER PRIMARY KEY,
     name                TEXT,
     favorite_account_id INTEGER,
-    closed              INTEGER,
-    FOREIGN KEY(favorite_account_id) REFERENCES account(id)
+    closed              INTEGER
     );
+INSERT INTO envelope VALUES (0, "NONE", 0, 0);
 
 CREATE TABLE line_item(
     id                  INTEGER PRIMARY KEY,
     transaction_id      INTEGER,
-    date                ,
+    date                INTEGER,
     line_type_id        INTEGER,
     account_id          INTEGER,
     description         TEXT,
     confirmation_number TEXT,
     complete            INTEGER,
     amount              REAL,
-    cd                  INTEGER,
-    FOREIGN KEY(line_type_id) REFERENCES line_type(id),
-    FOREIGN KEY(account_id) REFERENCES account(id)
+    cd                  INTEGER
     );
 
 CREATE TABLE envelope_item(
@@ -66,9 +72,7 @@ CREATE TABLE envelope_item(
     line_item_id        INTEGER,
     envelope_id         INTEGER,
     description         TEXT,
-    amount              REAL,
-    FOREIGN KEY(line_item_id) REFERENCES line_item(id),
-    FOREIGN KEY(envelope_id) REFERENCES envelope(id)
+    amount              REAL
     );
 
 CREATE TABLE ofx_item(
@@ -76,10 +80,8 @@ CREATE TABLE ofx_item(
     line_item_id        INTEGER,
     account_id          INTEGER,
     fit_id              TEXT,
-    name                TEXT,
-    data                TEXT,
-    FOREIGN KEY(line_item_id) REFERENCES line_item(id),
-    FOREIGN KEY(account_id) REFERENCES account(id)
+    memo                TEXT,
+    data                TEXT
     );
 
 -- CREATE TABLE ofx_statment(id, data)
@@ -87,7 +89,7 @@ CREATE TABLE ofx_item(
 -- CREATE TABLE goals(id, envelope_id, priority, description, target_amount, step_amount);
 '''
 
-class DataBase():
+class DataBaseBuiler():
     def __init__(self, db_file_path):
         self._cx = sqlite3.connect(db_file_path)
         self._cu = self._cx.cursor()
@@ -100,71 +102,59 @@ class DataBase():
         name = values['name']
         # Ignore the origional type id. Use catagory as the new type id.
         #type_id = int(values['typeID'])
-        type_id = int(values['catagory'])
-        closed = bool(values['closed'])
-        cd = bool(values['creditDebit'])
-        envelopes = bool(values['envelopes'])
+        account_type_id = int(values['catagory'])
+        closed = self._fix_bool(values['closed'])
+        cd = self._fix_bool(values['creditDebit'])
+        envelopes = self._fix_bool(values['envelopes'])
 
-        values = (id, name, type_id, closed, cd, envelopes)
+        if id <= 0:
+            # Skip the old special accounts.
+            # Only using the new special 0 NONE account.
+            return
+
+        values = (id, name, account_type_id, closed, cd, envelopes)
         self._cu.execute('INSERT INTO account VALUES (?, ?, ?, ?, ?, ?)', values)
-
-    def _add_account_type(self, values):
-        id = int(values['id'])
-        name = values['name']
-
-        values = (id, name)
-        self._cu.execute('INSERT INTO account_type VALUES (?, ?)', values)
 
     def _add_envelope(self, values):
         id = int(values['id'])
         name = values['name']
-        group_id = int(values['groupID'])
+        #group_id = int(values['groupID'])
         favorite_account_id = 0
-        closed = bool(values['closed'])
+        closed = self._fix_bool(values['closed'])
+
+        if id <= 0:
+            # Skip the old special envelopes.
+            # Only using the new special 0 NONE envelope.
+            return
 
         values = (id, name, favorite_account_id, closed)
+
         self._cu.execute('INSERT INTO envelope VALUES (?, ?, ?, ?)', values)
 
     def _add_envelope_item(self, values):
         id = int(values['id'])
         line_item_id = int(values['lineItemID'])
-        envelope_id = int(values['envelopeID'])
+        envelope_id = self._fix_envelope_id(values['envelopeID'])
         description = values['description']
         amount = float(values['amount'])
 
         values = (id, line_item_id, envelope_id, description, amount)
         self._cu.execute('INSERT INTO envelope_item VALUES (?, ?, ?, ?, ?)', values)
 
-    def _add_line_type(self, values):
-        id = int(values['id'])
-        name = values['name']
-
-        values = (id, name)
-        self._cu.execute('INSERT INTO line_type VALUES (?, ?)', values)
-
     def _add_line_item(self, values):
         id = int(values['id'])
         transaction_id = int(values['transactionID'])
         date = values['date']
-        type_id = int(values['typeID'])
-        account_id = int(values['accountID'])
+        line_type_id = self._fix_line_type_id(values['typeID'])
+        account_id = self._fix_account_id(values['accountID'])
         description = values['description']
-
-        if type_id == 9:
-            # Skip lines with Value 9 - "Erase me".
-            return
-
-        try:
-            confirmation_number = values['confirmationNumber']
-        except Exception as e:
-            confirmation_number = None
-
-        envelope_id = int(values['envelopeID'])
-        complete = values['complete']
+        confirmation_number = values.get('confirmationNumber', None)
+        #envelope_id = values['envelopeID']
+        complete = self._int_from_complete(values['complete'])
         amount = float(values['amount'])
-        cd = bool(values['creditDebit'])
+        cd = self._fix_bool(values['creditDebit'])
 
-        values = (id, transaction_id, date, type_id, account_id, description, confirmation_number, complete, amount, cd)
+        values = (id, transaction_id, date, line_type_id, account_id, description, confirmation_number, complete, amount, cd)
         self._cu.execute('INSERT INTO line_item VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', values)
 
     def _add_ofx_item(self, values):
@@ -174,11 +164,14 @@ class DataBase():
         fit_id = values['fitID']
 
         data = values['data']
-        data_dict = self._convert_ofx_string_to_dict_str(data)
-        data_str = str(data_dict)
-        name = data_dict['NAME']
+        data_dict = self._convert_ofx_string_to_dict(data)
+        memo = data_dict['NAME']
+        if 'MEMO' in data_dict:
+            memo = data_dict['MEMO']
 
-        values = (self._ofx_id, line_item_id, account_id, fit_id, name, data_str)
+        data_str = str(data_dict)
+
+        values = (self._ofx_id, line_item_id, account_id, fit_id, memo, data_str)
         self._cu.execute('INSERT INTO ofx_item VALUES (?, ?, ?, ?, ?, ?)', values)
 
     def _convert_ofx_string_to_dict(self, ofx_str):
@@ -196,6 +189,55 @@ class DataBase():
 
         return ofx_values
 
+    def _fix_account_id(self, value):
+        value = int(value)
+
+        if value == -1:
+            return 0
+
+        return value
+
+    def _fix_bool(self, value):
+        if value == 'true':
+            return 1
+
+        if value == 'false':
+            return 0
+
+        raise Exception('Unexpected bool <{}>'.format(value))
+
+    def _fix_complete(self, value):
+        if value == ' ':
+            return 0
+
+        if value == 'C':
+            return 1
+
+        if value == 'R':
+            return 2
+
+        raise Exception('Unexpected bool <{}>'.format(value))
+
+    def _fix_envelope_id(self, value):
+        value = int(value)
+
+        return value
+
+    def _fix_line_type_id(self, value):
+        if value in (-1, 9):
+            # Change old type_id -1 (NULL) and 9 (Erase Me) to new 0 (NONE)
+            return 0
+
+        if value == 8:
+            # Change old type_id 8 (Refund) to new 4
+            return 4
+
+        if value == 4:
+            # Change old type_id 4 (Transfer) to new 3
+            return 3
+
+        return value
+
     def _get_tag(self, element):
         # Remove the annoying Namespace from every tag.
         tag = element.tag
@@ -204,22 +246,36 @@ class DataBase():
 
         raise Exception('Unexpected namespace in the tag <{}>'.format(tag))
 
-    def _parse_element(self, element):
-        table_name = self._get_tag(element)
-        values = {}
+    def _get_values_from_element(self, element):
+        values = dict()
 
         for leaf in element:
             value = leaf.text
             name = self._get_tag(leaf)
             values[name] = value
 
-        if table_name == 'OFXLineItem':
-            self._add_ofx_item(values)
+        return values
 
-        elif table_name == 'LineType':
-            self._add_line_type(values)
+    def _int_from_complete(self, value):
+        if value == 'R':
+            # Reconsiled
+            return 2
 
-        elif table_name == 'LineItem':
+        if value == 'C':
+            # Complete
+            return 1
+
+        if value == ' ':
+            # Incomplete
+            return 0
+
+        return value
+
+    def _parse_element(self, element):
+        table_name = self._get_tag(element)
+        values = self._get_values_from_element(element)
+
+        if table_name == 'LineItem':
             self._add_line_item(values)
 
         elif table_name == 'EnvelopeLine':
@@ -231,12 +287,20 @@ class DataBase():
         elif table_name == 'Envelope':
             self._add_envelope(values)
 
+        #elif table_name == 'LineType':
+            #self._add_line_type(values)
+
         #elif table_name == 'EnvelopeGroup':
             #self._add_account_type(values)
 
         #elif table_name == 'AccountType':
             #self._add_account_type(values)
 
+        elif table_name == 'OFXLineItem':
+            self._add_ofx_item(values)
+
+        else:
+            print(table_name, values)
 
     def close(self):
         self._cx.close()
@@ -249,16 +313,8 @@ class DataBase():
         tree = ElementTree.parse(xml_path)
         root = tree.getroot()
 
+        print('Populating DB with data from data/FFdata.xml')
         for element in root:
             self._parse_element(element)
 
         self._cx.commit()
-
-
-if __name__ == '__main__':
-    db = DataBase('data/test.db')
-
-    db.make_tables()
-    db.populate_db_with_xml('data/FFdata.xml')
-
-    db.close()
