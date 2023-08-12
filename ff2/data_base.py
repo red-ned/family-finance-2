@@ -3,9 +3,6 @@ import sqlite3
 import pandas as pd
 
 
-DB_FILE_PATH = 'data/test.db'
-
-
 _Table = namedtuple('_Table', 'columns data')
 
 
@@ -20,22 +17,8 @@ def try_connection():
 
 # Threads can not share database connections.
 class DataBase():
-    #def __add__(self, other):
-
-    def __init__(self):
-        self._con = None
-
-    def __enter__(self):
-        self._con = sqlite3.connect(DB_FILE_PATH)
-        #self._con.execute('PRAGMA foreign_keys = ON;')
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self._con.close()
-        #print()
-        #print('EXIT DataBase: Type <{}>, Value <{}>'.format(type, value))
-        #print('     Traceback:', traceback)
-        #print()
+    def __init__(self, db_file_path):
+        self._con = sqlite3.connect(db_file_path)
 
 
     def _get_options(self, query):
@@ -51,7 +34,7 @@ class DataBase():
             transaction_id = int(transaction_id)
 
         except Exception as e:
-            transaction_id = 1164
+            transaction_id = 16291
 
         query = ('SELECT * FROM line_item '
                  'WHERE transaction_id = {}'.format(transaction_id))
@@ -59,10 +42,20 @@ class DataBase():
         df = pd.read_sql_query(query, self._con)
 
         data = df.to_dict('records')
-        return data
+        s_lines = list()
+        d_lines = list()
+
+        for line in data:
+            if line['cd'] == 0:
+                s_lines.append(line)
+
+            else:
+                d_lines.append(line)
+
+        return s_lines, d_lines
 
     def get_account_options(self):
-        query = 'SELECT id, name FROM account ORDER BY closed, type_id, name'
+        query = 'SELECT id, name FROM account ORDER BY closed, account_type_id, name'
         return self._get_options(query)
 
     def get_account_type_options(self):

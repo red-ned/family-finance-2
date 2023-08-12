@@ -1,12 +1,13 @@
+from dash import callback
+from dash import dash_table
 from dash import html
 from dash import register_page
-from dash import dash_table
 from dash.dependencies import Input
 from dash.dependencies import Output
 from dash.dependencies import State
 
 
-from data.data_base import DataBase
+from ff2.data_base import DataBase
 
 
 CLEARABLE = 'clearable'
@@ -28,10 +29,9 @@ register_page(__name__,
         path_template="/transaction/<transaction_id>")
 
 
-def _make_transaction_table(transaction_id):
-
+def _make_transaction_tables(transaction_id):
     with DataBase() as db:
-        lines = db.get_transaction_lines(transaction_id)
+        s_lines, d_lines = db.get_transaction_lines(transaction_id)
         line_type_options = db.get_line_type_options()
         account_options = db.get_account_options()
 
@@ -53,8 +53,8 @@ def _make_transaction_table(transaction_id):
             'account_id': {OPTIONS: account_options,   CLEARABLE:False}
             }
 
-    transaction_table = dash_table.DataTable(id='transaction_table',
-            data=lines,
+    source_table = dash_table.DataTable(id='source_table',
+            data=s_lines,
             columns=columns,
             dropdown=dropdown,
             editable=True,
@@ -62,33 +62,74 @@ def _make_transaction_table(transaction_id):
             style_as_list_view=True,
             )
 
-    return transaction_table
+    destination_table = dash_table.DataTable(id='destination_table',
+            data=d_lines,
+            columns=columns,
+            dropdown=dropdown,
+            editable=True,
+            row_deletable=True,
+            style_as_list_view=True,
+            )
+
+    return source_table, destination_table
 
 
 def layout(transaction_id=None):
     content = 'This is our Transaction page content.'
     trasaction_str = 'Transaction ID: {}'.format(transaction_id)
-    transaction_table = _make_transaction_table(transaction_id)
+    source_table, destination_table = _make_transaction_tables(transaction_id)
+
+    add_source_button = html.Button('Add Source Row', n_clicks=0,
+            id='add_source_button')
+
+    add_destination_button = html.Button('Add Destination Row', n_clicks=0,
+            id='add_destination_button')
 
     children = [
             html.H1(children='The Transaction page'),
             html.Div(content),
             html.Div(trasaction_str),
-            transaction_table,
-            html.Button('Add Line Item Row', id='editing-rows-button', n_clicks=0),
+            source_table,
+            add_source_button,
+            destination_table,
+            add_destination_button,
             ]
 
     return html.Div(children=children)
 
 
 
-@app.callback(
-    Output('adding-rows-table', 'data'),
-    Input('editing-rows-button', 'n_clicks'),
-    State('adding-rows-table', 'data'),
-    State('adding-rows-table', 'columns'))
-def add_row(n_clicks, rows, columns):
-    if n_clicks > 0:
-        rows.append({c['id']: '' for c in columns})
+@callback(Output('source_table', 'data'),
+          Input('add_source_button', 'n_clicks'),
+          State('source_table', 'data'),
+          State('destination_table', 'data'))
+def add_source_row(n_clicks, s_data, d_data):
+    if n_clicks == 0:
+        return s_data
 
-    return rows
+    new_row = dict()
+    first_row = data[0]
+
+    for id, value in first_row.items():
+        new_value = None
+        if id in ('transaction_id', 'date', 'description', 'amount'):
+            new_value = value
+
+        new_row[id] = new_value
+
+    data.append(new_row)
+
+    return data
+
+@callback(
+    Output('adding-rows-graph', 'figure'),
+    Input('adding-rows-table', 'data'),
+    Input('adding-rows-table', 'columns'))
+def display_output(rows, columns):
+    return {
+        'data': [{
+            'type': 'heatmap',
+            'z': [[row.get(c['id'], None) for c in columns] for row in rows],
+            'x': [c['name'] for c in columns]
+        }]
+    }
