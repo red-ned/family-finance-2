@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
-from  xml.etree import ElementTree
-
-import sqlite3
 from datetime import datetime
+from sqlite3 import connect
+from xml.etree import ElementTree
 
 
 CREATE_ACCOUNT_TYPE_TABLE = '''
@@ -112,11 +111,10 @@ CREATE_OTHER_TABLE = '''
 
 class DataBaseBuiler():
     def __init__(self, db_file_path):
-        self._cx = sqlite3.connect(db_file_path)
+        self._cx = connect(db_file_path)
         self._cu = self._cx.cursor()
 
         self._ofx_id = 0
-
 
     def _add_account(self, values):
         id = int(values['id'])
@@ -155,12 +153,15 @@ class DataBaseBuiler():
     def _add_envelope_item(self, values):
         id = int(values['id'])
         line_item_id = int(values['lineItemID'])
-        envelope_id = self._fix_envelope_id(values['envelopeID'])
-        description = values['description']
+        envelope_id = int(values['envelopeID'])
+        description = values.get('description', '')
         amount = float(values['amount'])
 
-        values = (id, line_item_id, envelope_id, description, amount)
-        self._cu.execute('INSERT INTO envelope_item VALUES (?, ?, ?, ?, ?)', values)
+        if description is None:
+            description = ''
+
+        row = (id, line_item_id, envelope_id, description, amount)
+        self._cu.execute('INSERT INTO envelope_item VALUES (?, ?, ?, ?, ?)', row)
 
     def _add_line_item(self, values):
         id = int(values['id'])
@@ -168,15 +169,22 @@ class DataBaseBuiler():
         date = values['date']
         line_type_id = self._fix_line_type_id(values['typeID'])
         account_id = self._fix_account_id(values['accountID'])
-        description = values['description']
-        confirmation_number = values.get('confirmationNumber', None)
+        description = values.get('description', '')
+        confirmation_number = values.get('confirmationNumber', '')
         #envelope_id = values['envelopeID']
         complete = self._int_from_complete(values['complete'])
         amount = float(values['amount'])
         cd = self._fix_bool(values['creditDebit'])
 
-        values = (id, transaction_id, date, line_type_id, account_id, description, confirmation_number, complete, amount, cd)
-        self._cu.execute('INSERT INTO line_item VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', values)
+        if description is None:
+            description = ''
+
+        if confirmation_number is None:
+            confirmation_number = ''
+
+        row = (id, transaction_id, date, line_type_id, account_id, description, confirmation_number, complete, amount, cd)
+
+        self._cu.execute('INSERT INTO line_item VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', row)
 
     def _add_ofx_item(self, values):
         self._ofx_id += 1
@@ -184,16 +192,13 @@ class DataBaseBuiler():
         account_id = int(values['accountID'])
         fit_id = values['fitID']
 
-        data = values['data']
-        data_dict = self._convert_ofx_string_to_dict(data)
-        memo = data_dict['NAME']
-        if 'MEMO' in data_dict:
-            memo = data_dict['MEMO']
-
+        data_dict = self._convert_ofx_string_to_dict(values['data'])
         data_str = str(data_dict)
 
-        values = (self._ofx_id, line_item_id, account_id, fit_id, memo, data_str)
-        self._cu.execute('INSERT INTO ofx_item VALUES (?, ?, ?, ?, ?, ?)', values)
+        memo = data_dict.get('NAME', '') + data_dict.get('MEMO', '')
+
+        row = (self._ofx_id, line_item_id, account_id, fit_id, memo, data_str)
+        self._cu.execute('INSERT INTO ofx_item VALUES (?, ?, ?, ?, ?, ?)', row)
 
     def _convert_ofx_string_to_dict(self, ofx_str):
         ofx_str = ofx_str.replace('\n', '')
@@ -239,12 +244,9 @@ class DataBaseBuiler():
 
         raise Exception('Unexpected bool <{}>'.format(value))
 
-    def _fix_envelope_id(self, value):
+    def _fix_line_type_id(self, value):
         value = int(value)
 
-        return value
-
-    def _fix_line_type_id(self, value):
         if value in (-1, 9):
             # Change old type_id -1 (NULL) and 9 (Erase Me) to new 0 (NONE)
             return 0
