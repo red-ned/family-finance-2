@@ -109,6 +109,97 @@ CREATE_OTHER_TABLE = '''
     -- CREATE TABLE goals(id, envelope_id, priority, description, target_amount, step_amount);
     '''
 
+CREATE_ACCOUNT_DETAILS_VIEW = '''
+    CREATE VIEW account_details
+    AS
+    SELECT
+        account.id            AS account_id,
+        account.name          AS account_name,
+        account.credit_debit  AS account_credit_debit,
+        account_type.id       AS account_type_id,
+        account_type.name     AS account_type_name,
+        account.closed        AS account_closed,
+        account.credit_debit  AS account_credit_debit,
+        account.envelopes     AS account_envelopes
+    FROM
+        account
+        INNER JOIN account_type ON account_type.id = account.account_type_id
+        ;
+    '''
+
+CREATE_ENVELOPE_DETAILS_VIEW = '''
+    CREATE VIEW envelope_details
+    AS
+    SELECT
+        envelope.id           AS envelope_id,
+        envelope.name         AS envelope_name,
+        account.id            AS favorite_account_id,
+        account.name          AS favorite_account_name,
+        envelope.closed       AS envelope_closed
+    FROM
+        envelope
+        INNER JOIN account ON account.id = envelope.favorite_account_id
+        ;
+    '''
+
+CREATE_LINE_DETAILS_VIEW = '''
+    CREATE VIEW line_details
+    AS
+    SELECT
+        line_item.transaction_id      AS transaction_id,
+        line_item.id                  AS id,
+        line_item.date                AS date,
+        line_type.id                  AS line_type_id,
+        line_type.name                AS line_type_name,
+        account.id                    AS account_id,
+        account.name                  AS account_name,
+        account.credit_debit          AS account_credit_debit,
+        line_item.description         AS description,
+        line_item.confirmation_number AS confirmation_number,
+        line_complete.id              AS complete_id,
+        line_complete.short_name      AS complete_short_name,
+        line_item.amount              AS amount,
+        line_item.credit_debit        AS credit_debit
+    FROM
+        line_item
+        INNER JOIN line_type     ON line_type.id     = line_item.line_type_id
+        INNER JOIN account       ON account.id       = line_item.account_id
+        INNER JOIN line_complete ON line_complete.id = line_item.complete_id
+        ;
+    '''
+
+CREATE_ENVELOPE_LINE_DETAILS_VIEW = '''
+    CREATE VIEW envelope_line_details
+    AS
+    SELECT
+        line_item.transaction_id  AS transaction_id,
+        line_item.id              AS line_item_id,
+        envelope_item.id          AS id,
+        line_item.date            AS date,
+        line_type.id              AS line_type_id,
+        line_type.name            AS line_type_name,
+        line_item.description     AS line_description,
+        account.id                AS account_id,
+        account.name              AS account_name,
+        account.credit_debit      AS account_credit_debit,
+        envelope.id               AS envelope_id,
+        envelope.name             AS envelope_name,
+        envelope_item.description AS description,
+        envelope_item.amount      AS amount,
+        line_complete.id          AS complete_id,
+        line_complete.short_name  AS complete_short_name,
+        line_item.credit_debit    AS credit_debit
+    FROM
+        envelope_item
+        INNER JOIN line_item        ON line_item.id     = envelope_item.line_item_id
+        INNER JOIN envelope         ON envelope.id      = envelope_item.envelope_id
+        INNER JOIN line_type        ON line_type.id     = line_item.line_type_id
+        INNER JOIN account          ON account.id       = line_item.account_id
+        INNER JOIN line_complete    ON line_complete.id = line_item.complete_id
+        ;
+    '''
+
+
 class DataBaseBuiler():
     def __init__(self, db_file_path):
         self._cx = connect(db_file_path)
@@ -339,6 +430,11 @@ class DataBaseBuiler():
         self._cx.executescript(CREATE_ENVELOPE_ITEM_TABLE)
         self._cx.executescript(CREATE_LINE_ITEM_TABLE)
         self._cx.executescript(CREATE_OFX_ITEM_TABLE)
+
+        self._cx.executescript(CREATE_ACCOUNT_DETAILS_VIEW)
+        self._cx.executescript(CREATE_ENVELOPE_DETAILS_VIEW)
+        self._cx.executescript(CREATE_LINE_DETAILS_VIEW)
+        self._cx.executescript(CREATE_ENVELOPE_LINE_DETAILS_VIEW)
 
         self._cx.commit()
 
