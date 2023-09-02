@@ -6,88 +6,109 @@ import sqlite3
 from datetime import datetime
 
 
-SQL_CREATE_TABLES = '''
-CREATE TABLE account_type(
-    id                  INTEGER PRIMARY KEY,
-    name                TEXT
-    );
--- Add the accout type (old catagory) values.
-INSERT INTO account_type VALUES (0, "NONE");
-INSERT INTO account_type VALUES (1, "Income");
-INSERT INTO account_type VALUES (2, "Account");
-INSERT INTO account_type VALUES (3, "Expense");
+CREATE_ACCOUNT_TYPE_TABLE = '''
+    CREATE TABLE account_type(
+        id                  INTEGER PRIMARY KEY,
+        name                TEXT
+        );
 
-CREATE TABLE line_type(
-    id                  INTEGER PRIMARY KEY,
-    name                TEXT
-    );
-INSERT INTO line_type VALUES (0, "NONE");
-INSERT INTO line_type VALUES (1, "Deposit");
-INSERT INTO line_type VALUES (2, "Purchase");
-INSERT INTO line_type VALUES (3, "Transfer"); -- Old value 4
-INSERT INTO line_type VALUES (4, "Refund");   -- Old value 8
-INSERT INTO line_type VALUES (5, "Deposit Refund");
+    INSERT INTO account_type VALUES (0, "-Select Account Type-");
+    INSERT INTO account_type VALUES (1, "Income");
+    INSERT INTO account_type VALUES (2, "Account");
+    INSERT INTO account_type VALUES (3, "Expense");
+    '''
 
-CREATE TABLE line_complete(
-    id                  INTEGER PRIMARY KEY,
-    name                TEXT
-    );
-INSERT INTO line_complete VALUES (0, "NONE");
-INSERT INTO line_complete VALUES (1, "Cleared");
-INSERT INTO line_complete VALUES (2, "Reconciled");
+CREATE_LINE_TYPE_TABLE = '''
+    CREATE TABLE line_type(
+        id                  INTEGER PRIMARY KEY,
+        name                TEXT
+        );
 
-CREATE TABLE account(
-    id                  INTEGER PRIMARY KEY,
-    name                TEXT,
-    account_type_id     INTEGER,
-    closed              INTEGER,
-    cd                  INTEGER,
-    envelopes           INTEGER
-    );
-INSERT INTO account VALUES (0, "NONE", 0, 0, 0, 0);
+    INSERT INTO line_type VALUES (0, " ");
+    INSERT INTO line_type VALUES (1, "Deposit");
+    INSERT INTO line_type VALUES (2, "Purchase");
+    INSERT INTO line_type VALUES (3, "Transfer"); -- Old value 4
+    INSERT INTO line_type VALUES (4, "Refund");   -- Old value 8
+    INSERT INTO line_type VALUES (5, "Deposit Refund");
+    '''
 
-CREATE TABLE envelope(
-    id                  INTEGER PRIMARY KEY,
-    name                TEXT,
-    favorite_account_id INTEGER,
-    closed              INTEGER
-    );
-INSERT INTO envelope VALUES (0, "NONE", 0, 0);
+CREATE_LINE_COMPLETE_TABLE = '''
+    CREATE TABLE line_complete(
+        id                  INTEGER PRIMARY KEY,
+        short_name          TEXT,
+        name                TEXT
+        );
 
-CREATE TABLE line_item(
-    id                  INTEGER PRIMARY KEY,
-    transaction_id      INTEGER,
-    date                INTEGER,
-    line_type_id        INTEGER,
-    account_id          INTEGER,
-    description         TEXT,
-    confirmation_number TEXT,
-    complete            INTEGER,
-    amount              REAL,
-    cd                  INTEGER
-    );
+    INSERT INTO line_complete VALUES (0, " ", "NONE");
+    INSERT INTO line_complete VALUES (1, "C", "Cleared");
+    INSERT INTO line_complete VALUES (2, "R", "Reconciled");
+    '''
 
-CREATE TABLE envelope_item(
-    id                  INTEGER PRIMARY KEY,
-    line_item_id        INTEGER,
-    envelope_id         INTEGER,
-    description         TEXT,
-    amount              REAL
-    );
+CREATE_ACCOUNT_TABLE = '''
+    CREATE TABLE account(
+        id                  INTEGER PRIMARY KEY,
+        name                TEXT,
+        account_type_id     INTEGER,
+        closed              INTEGER,
+        credit_debit        INTEGER,
+        envelopes           INTEGER
+        );
 
-CREATE TABLE ofx_item(
-    id                  INTEGER PRIMARY KEY,
-    line_item_id        INTEGER,
-    account_id          INTEGER,
-    fit_id              TEXT,
-    memo                TEXT,
-    data                TEXT
-    );
+    INSERT INTO account VALUES (0, "-Select Account-", 0, 0, 0, 0);
+    '''
 
--- CREATE TABLE ofx_statment(id, data)
--- CREATE TABLE receipt(id, line_item_id, image);
--- CREATE TABLE goals(id, envelope_id, priority, description, target_amount, step_amount);
-'''
+CREATE_ENVELOPE_TABLE = '''
+    CREATE TABLE envelope(
+        id                  INTEGER PRIMARY KEY,
+        name                TEXT,
+        favorite_account_id INTEGER,
+        closed              INTEGER
+        );
+
+    INSERT INTO envelope VALUES (0, "-Select Envelope-", 0, 0);
+    '''
+
+CREATE_LINE_ITEM_TABLE = '''
+    CREATE TABLE line_item(
+        id                  INTEGER PRIMARY KEY,
+        transaction_id      INTEGER,
+        date                TEXT,
+        line_type_id        INTEGER,
+        account_id          INTEGER,
+        description         TEXT,
+        confirmation_number TEXT,
+        complete_id         INTEGER,
+        amount              REAL,
+        credit_debit        INTEGER
+        );
+    '''
+
+CREATE_ENVELOPE_ITEM_TABLE = '''
+    CREATE TABLE envelope_item(
+        id                  INTEGER PRIMARY KEY,
+        line_item_id        INTEGER,
+        envelope_id         INTEGER,
+        description         TEXT,
+        amount              REAL
+        );
+    '''
+
+CREATE_OFX_ITEM_TABLE = '''
+    CREATE TABLE ofx_item(
+        id                  INTEGER PRIMARY KEY,
+        line_item_id        INTEGER,
+        account_id          INTEGER,
+        fit_id              TEXT,
+        memo                TEXT,
+        data                TEXT
+        );
+    '''
+
+CREATE_OTHER_TABLE = '''
+    -- CREATE TABLE ofx_statment(id, data)
+    -- CREATE TABLE receipt(id, line_item_id, image);
+    -- CREATE TABLE goals(id, envelope_id, priority, description, target_amount, step_amount);
+    '''
 
 class DataBaseBuiler():
     def __init__(self, db_file_path):
@@ -306,7 +327,17 @@ class DataBaseBuiler():
         self._cx.close()
 
     def make_tables(self):
-        self._cx.executescript(SQL_CREATE_TABLES)
+        self._cx.executescript(CREATE_ACCOUNT_TYPE_TABLE)
+        self._cx.executescript(CREATE_LINE_TYPE_TABLE)
+        self._cx.executescript(CREATE_LINE_COMPLETE_TABLE)
+
+        self._cx.executescript(CREATE_ACCOUNT_TABLE)
+        self._cx.executescript(CREATE_ENVELOPE_TABLE)
+
+        self._cx.executescript(CREATE_ENVELOPE_ITEM_TABLE)
+        self._cx.executescript(CREATE_LINE_ITEM_TABLE)
+        self._cx.executescript(CREATE_OFX_ITEM_TABLE)
+
         self._cx.commit()
 
     def populate_db_with_xml(self, xml_path):
