@@ -7,7 +7,7 @@ from dash.dependencies import Output
 from dash.dependencies import State
 
 
-from ff2.data_base import DataBase
+from ff2.data_base.data_base import DataBase
 
 
 CLEARABLE = 'clearable'
