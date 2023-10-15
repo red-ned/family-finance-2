@@ -33,12 +33,13 @@ class FunctionMenu():
     def set_title(self, title):
         self._title = title
 
-    def show(self):
+    def show(self, cursor_index=None):
         menu = TerminalMenu(
                 title=self._title,
                 menu_entries=self._texts,
                 clear_screen=True,
                 skip_empty_entries=True,
+                cursor_index=cursor_index
                 )
 
         selection_index = menu.show()
