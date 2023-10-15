@@ -212,16 +212,30 @@ CREATE_ENVELOPE_BALANCE_VIEW = '''
     CREATE VIEW envelope_balance
     AS
     SELECT
-        envelope_item.envelope_id  AS envelope_id,
-        envelope_item.amount       AS amount,
-        line_item.line_complete_id AS line_complete_id,
+        line_item.account_id       AS account_id,
         line_item.credit_debit     AS line_credit_debit,
-        account.credit_debit       AS account_credit_debit
+        envelope_item.envelope_id  AS envelope_id,
+        account.credit_debit       as account_credit_debit,
+        sum(envelope_item.amount)  AS amount_sum
     FROM
         envelope_item
-        INNER JOIN line_item     ON envelope_item.line_item_id = line_item.id
-        INNER JOIN account       ON line_item.account_id       = account.id
-        ;
+        INNER JOIN line_item ON line_item.id = envelope_item.line_item_id
+        INNER JOIN account   ON account.id   = line_item.account_id
+    GROUP BY
+        account_id, envelope_id, line_credit_debit;
+    '''
+
+CREATE_ACCOUNT_BALANCE_VIEW = '''
+    CREATE VIEW account_balance
+    AS
+    SELECT
+        line_item.account_id    AS account_id,
+        line_item.credit_debit  AS credit_debit,
+        sum(line_item.amount)   AS amount_sum
+    FROM
+        line_item
+    GROUP BY
+        account_id, credit_debit;
     '''
 
 DROP_VIEWS = '''
@@ -293,28 +307,21 @@ class DataBase():
             line['debit_amount'] = debit_amount
             line['balance'] = balance
 
-    def _calculate_account_balance(self, account_id, account_cd=None):
-        if account_cd is None:
-            account_id = self._get_value(
-                    'SELECT credit_debit FROM account '
-                    'WHERE account_id = ?',
+    def _calculate_account_balance(self, account_id, account_cd, account_balances=None):
+        if account_balances is None:
+            account_balances = self._get_records(
+                    'SELECT * FROM account_balance WHERE account_id = ? ',
                     account_id)
 
-        credit_balance = self._get_value(
-                'SELECT sum(amount) as sum FROM line_item '
-                'WHERE credit_debit = 0 AND account_id = ?',
-                account_id)
+        credit_balance = 0.0
+        debit_balance = 0.0
+        for record in account_balances:
+            if record['account_id'] == account_id:
+                if record['credit_debit'] == CREDIT:
+                    credit_balance = record['amount_sum']
 
-        debit_balance = self._get_value(
-                'SELECT sum(amount) as sum FROM line_item '
-                'WHERE credit_debit = 1 AND account_id = ?',
-                account_id)
-
-        if debit_balance is None:
-            debit_balance = 0.0
-
-        if credit_balance is None:
-            credit_balance = 0.0
+                if record['credit_debit'] == DEBIT:
+                    debit_balance = record['amount_sum']
 
         if account_cd == DEBIT:
             balance = debit_balance - credit_balance
@@ -324,19 +331,20 @@ class DataBase():
 
         return balance
 
-    def _calculate_envelope_balance(self, envelope_id):
-        envelope_items = self._get_records(
-                'SELECT * FROM envelope_balance '
-                'WHERE envelope_id = ? ',
-                envelope_id)
+    def _calculate_envelope_balance(self, envelope_id, envelope_balances=None):
+        if envelope_balances is None:
+            envelope_balances = self._get_records(
+                    'SELECT * FROM envelope_balance WHERE envelope_id = ? ',
+                    envelope_id)
 
         balance = 0.0
-        for line in envelope_items:
-            if line['line_credit_debit'] == line['account_credit_debit']:
-                balance += line['amount']
+        for record in envelope_balances:
+            if record['envelope_id'] == envelope_id:
+                if record['line_credit_debit'] == record['account_credit_debit']:
+                    balance += record['amount_sum']
 
-            else:
-                balance -= line['amount']
+                else:
+                    balance -= record['amount_sum']
 
         return balance
 
@@ -485,10 +493,13 @@ class DataBase():
                 'ORDER BY closed, account_type_id, name')
 
         if add_balance_column:
+            account_balances = self._get_records('SELECT * FROM account_balance')
+
             for account in accounts:
                 id_ = account['id']
                 cd = account['credit_debit']
-                account['balance'] = self._calculate_account_balance(id_, cd)
+                account['balance'] = self._calculate_account_balance(id_, cd,
+                        account_balances)
 
         return accounts
 
@@ -499,9 +510,11 @@ class DataBase():
                 'ORDER BY name')
 
         if add_balance_column:
+            envelope_balances = self._get_records('SELECT * FROM envelope_balance')
             for envelope in envelopes:
                 id_ = envelope['id']
-                envelope['balance'] = self._calculate_envelope_balance(id_)
+                envelope['balance'] = self._calculate_envelope_balance(id_,
+                        envelope_balances)
 
         return envelopes
 
@@ -536,6 +549,7 @@ class DataBase():
         cursor.executescript(CREATE_LINE_ITEM_DETAILS_VIEW)
         cursor.executescript(CREATE_ENVELOPE_ITEM_DETAILS_VIEW)
         cursor.executescript(CREATE_ENVELOPE_BALANCE_VIEW)
+        cursor.executescript(CREATE_ACCOUNT_BALANCE_VIEW)
 
         self._con.commit()
 
