@@ -14,8 +14,8 @@ DEFAULT_XML_DATA = 'data/FFdata.xml'
 
 
 
-ACCOUNT_LINES_TEMPLATE = '{:10} {:1} {:30} {:>10} {:1} {:>10} {:>10} {:^3}'
-ENVELOPE_LINES_TEMPLATE = '{:10} {:1} {:25} {:30} {:30} {:>10} {:1} {:>10} {:>10}'
+ACCOUNT_LINES_TEMPLATE = '{:10} {:1} {:40} {:>8} {:1} {:>8} {:>10} {:1}'
+ENVELOPE_LINES_TEMPLATE = '{:10} {:1} {:25} {:30} {:30} {:>8} {:1} {:>8} {:>10}'
 
 
 class Menus():
@@ -61,8 +61,8 @@ class Menus():
         lines.append('')
         lines.append('    Balance: ${balance:.2f}  Type: {account_type_name}  Closed: {closed}  Envelopes: {envelopes}'.format_map(account))
         lines.append('')
-        lines.append('  ' + ACCOUNT_LINES_TEMPLATE.format('Date', '',
-                'Description', 'Debit', '', 'Credit', 'Balance', 'OFX'))
+        lines.append('  ' + ACCOUNT_LINES_TEMPLATE.format('Date', 'T',
+                'Description', 'Debit', 'C', 'Credit', 'Balance', 'F'))
 
         lines = '\n'.join(lines)
 
