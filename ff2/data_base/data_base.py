@@ -127,8 +127,7 @@ CREATE_ACCOUNT_DETAILS_VIEW = '''
         account_type.name       AS account_type_name
     FROM
         account
-        INNER JOIN account_type ON account.account_type_id = account_type.id
-        ;
+        INNER JOIN account_type ON account.account_type_id = account_type.id;
     '''
 
 CREATE_ENVELOPE_DETAILS_VIEW = '''
@@ -142,8 +141,7 @@ CREATE_ENVELOPE_DETAILS_VIEW = '''
         account.name                 AS favorite_account_name
     FROM
         envelope
-        INNER JOIN account ON envelope.favorite_account_id = account.id
-        ;
+        INNER JOIN account ON envelope.favorite_account_id = account.id;
     '''
 
 CREATE_LINE_ITEM_DETAILS_VIEW = '''
@@ -171,8 +169,7 @@ CREATE_LINE_ITEM_DETAILS_VIEW = '''
         INNER JOIN line_type     ON line_item.line_type_id     = line_type.id
         INNER JOIN line_complete ON line_item.line_complete_id = line_complete.id
         INNER JOIN account       ON line_item.account_id       = account.id
-        LEFT  JOIN ofx_item      ON line_item.id               = ofx_item.line_item_id
-        ;
+        LEFT  JOIN ofx_item      ON line_item.id               = ofx_item.line_item_id;
     '''
 
 CREATE_ENVELOPE_ITEM_DETAILS_VIEW = '''
@@ -204,8 +201,7 @@ CREATE_ENVELOPE_ITEM_DETAILS_VIEW = '''
         INNER JOIN envelope      ON envelope_item.envelope_id  = envelope.id
         INNER JOIN line_type     ON line_item.line_type_id     = line_type.id
         INNER JOIN account       ON line_item.account_id       = account.id
-        INNER JOIN line_complete ON line_item.line_complete_id = line_complete.id
-        ;
+        INNER JOIN line_complete ON line_item.line_complete_id = line_complete.id;
     '''
 
 CREATE_ENVELOPE_BALANCE_VIEW = '''
