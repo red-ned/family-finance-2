@@ -95,21 +95,25 @@ class XmlImporter():
         if description is None:
             description = ''
 
-        if confirmation_number is None:
-            confirmation_number = ''
+        description = description.strip()
+
+        if confirmation_number:
+            confirmation_number = confirmation_number.strip()
+
+        if confirmation_number:
+            description = '{} - ({})'.format(description, confirmation_number)
 
         self._db.add_line_item(
-                    id_=id_,
-                    transaction_id=transaction_id,
-                    date=date,
-                    line_type_id=line_type_id,
-                    account_id=account_id,
-                    description=description,
-                    confirmation_number=confirmation_number,
-                    line_complete_id=line_complete_id,
-                    amount=amount,
-                    credit_debit=cd
-                    )
+                id_=id_,
+                transaction_id=transaction_id,
+                date=date,
+                line_type_id=line_type_id,
+                account_id=account_id,
+                description=description,
+                line_complete_id=line_complete_id,
+                amount=amount,
+                credit_debit=cd
+                )
 
     def _add_ofx_item(self, values):
         line_item_id = int(values['lineItemID'])
@@ -119,7 +123,8 @@ class XmlImporter():
         data_dict = self._convert_ofx_string_to_dict(values['data'])
         data_str = str(data_dict)
 
-        memo = data_dict.get('NAME', '') + data_dict.get('MEMO', '')
+        memo = data_dict.get('NAME', '') + ' ' + data_dict.get('MEMO', '')
+        memo = memo.strip()
 
         self._db.add_ofx_item(
                 line_item_id=line_item_id,
