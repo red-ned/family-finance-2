@@ -31,7 +31,7 @@ class Menus():
             if not file_name.endswith(".db"):
                 continue
 
-            file_path = path.join(data_dir_path, file_name)
+            file_path = path.join(self._data_dir_path, file_name)
             file_path = path.abspath(file_path)
             file_paths.append(file_path)
 
