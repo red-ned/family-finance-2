@@ -239,7 +239,7 @@ DROP_VIEWS = '''
     DROP VIEW IF EXISTS envelope_details;
     DROP VIEW IF EXISTS line_item_details;
     DROP VIEW IF EXISTS envelope_item_details;
-'''
+    '''
 
 
 def dict_factory(cursor, row):
@@ -523,7 +523,6 @@ class DataBase():
 
         return transaction_lines
 
-
     def make_tables(self):
         cursor = self._con.cursor()
 
@@ -539,7 +538,7 @@ class DataBase():
         cursor.executescript(CREATE_LINE_ITEM_TABLE)
         cursor.executescript(CREATE_OFX_ITEM_TABLE)
 
-        ### Make a real method of thracking schema versions and updating them.
+        ### Make a real method of tracking schema versions and updating them.
         cursor.executescript(CREATE_ACCOUNT_DETAILS_VIEW)
         cursor.executescript(CREATE_ENVELOPE_DETAILS_VIEW)
         cursor.executescript(CREATE_LINE_ITEM_DETAILS_VIEW)
