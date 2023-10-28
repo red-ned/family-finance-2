@@ -55,3 +55,15 @@ async def get_ff2_envelopes(transaction_id):
     db.close()
 
     return data
+
+@app.get("/ff2/lines/")
+async def get_ff2_envelopes(account_id=None, line_type_id=None, amount=None,
+        complete_short_name=None, description=None):
+
+    db = DataBase('data/ff2_db.db')
+    data = db.search_line_items(account_id, line_type_id, amount,
+        complete_short_name, description)
+    db.close()
+
+    return data
+

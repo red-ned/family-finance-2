@@ -548,9 +548,39 @@ class DataBase():
 
         self._con.commit()
 
+    def search_line_items(self, account_id=None, line_type_id=None, amount=None,
+            complete_short_name=None, description=None):
+        clauses = list()
+        params = list()
 
+        if account_id is not None:
+            clauses.append('account_id = ?')
+            params.append(account_id)
 
+        if line_type_id is not None:
+            clauses.append('line_type_id = ?')
+            params.append(line_type_id)
 
+        if amount is not None:
+            clauses.append('amount = ?')
+            params.append(amount)
+
+        if complete_short_name is not None:
+            clauses.append('complete_short_name LIKE ?')
+            params.append(complete_short_name)
+
+        if description is not None:
+            clauses.append('description LIKE ?')
+            params.append('%{}%'.format(description))
+
+        clauses = ' AND '.join(clauses)
+        params = tuple(params)
+
+        account_lines = self._get_records(
+                'SELECT * FROM line_item_details WHERE {}'.format(clauses),
+                *params)
+
+        return account_lines
 
 
     def c_heck_connection(self):
